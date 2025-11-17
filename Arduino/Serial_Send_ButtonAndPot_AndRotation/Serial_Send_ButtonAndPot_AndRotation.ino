@@ -60,7 +60,7 @@ void loop() {
   // --- Print values ---
   Serial.print(buttonVal);
   Serial.print(",");
-  Serial.print(potPin);
+  Serial.print(potVal);
   Serial.print(",");
   Serial.print(pitch);
   Serial.print(",");
