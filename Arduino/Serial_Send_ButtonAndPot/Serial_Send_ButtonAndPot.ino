@@ -1,5 +1,5 @@
-int potPin = A0;
 int buttonPin = 2;
+int potPin = A0;
 
 void setup() {
   Serial.begin(9600);
@@ -7,11 +7,12 @@ void setup() {
 }
 
 void loop() {
-  int potVal = analogRead(potPin);
   int buttonVal = digitalRead(buttonPin);
-  Serial.print(potVal);
+  int potVal = analogRead(potPin);
+
+  Serial.print(buttonVal);
   Serial.print(",");
-  Serial.println(buttonVal);
+  Serial.println(potVal);
 
   delay(10);
 }

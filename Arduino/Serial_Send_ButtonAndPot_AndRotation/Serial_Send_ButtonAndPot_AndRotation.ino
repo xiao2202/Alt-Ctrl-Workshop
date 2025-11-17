@@ -4,8 +4,8 @@
 
 Adafruit_MPU6050 mpu;
 
-int potPin = A0;
 int buttonPin = 2;
+int potPin = A0;
 
 float pitch = 0.0;
 float roll = 0.0;
@@ -55,12 +55,12 @@ void loop() {
   roll = alpha * (roll + gyroRollRate * dt) + (1 - alpha) * accelRoll;
   yaw += gyroYawRate * dt; 
 
-  int potVal = analogRead(potPin);
   int buttonVal = digitalRead(buttonPin);
+  int potVal = analogRead(potPin);
   // --- Print values ---
-  Serial.print(potVal);
-  Serial.print(",");
   Serial.print(buttonVal);
+  Serial.print(",");
+  Serial.print(potPin);
   Serial.print(",");
   Serial.print(pitch);
   Serial.print(",");
