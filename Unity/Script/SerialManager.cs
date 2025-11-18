@@ -3,14 +3,14 @@ using UnityEngine;
 
 public class SerialManager : MonoBehaviour
 {
-    SerialPort port = new SerialPort("COM10", 9600);
+    SerialPort port = new SerialPort("COM10", 115200);
     public float potVal;
     public int buttonVal;
 
     public float roll;
     public float pitch;
     public float yaw;
-
+    public float accZ;
     void Start()
     {
         if (!port.IsOpen)
@@ -25,15 +25,24 @@ public class SerialManager : MonoBehaviour
         {
             string data = port.ReadLine().Trim(); // Trim() to remove \r and \n
 
+            if (string.IsNullOrEmpty(data))
+                return;
+
             string[] values = data.Split(','); // split data by comma like "523", "0"
 
             buttonVal = int.Parse(values[0]);
-            potVal = float.Parse(values[1]);
+            potVal = int.Parse(values[1]);
             pitch = float.Parse(values[2]);
             roll = float.Parse(values[3]);
             yaw = float.Parse(values[4]);
-            
-            Debug.Log("buttonVal: "+ buttonVal + "| potVal: " + potVal + " | pitch: " + pitch + " | roll: " + roll + " | yaw: " + yaw);
+            accZ = float.Parse(values[5]);
+
+            Debug.Log("buttonVal: " + buttonVal +
+                    " | potVal: " + potVal + 
+                    " | pitch: " + pitch + 
+                    " | roll: " + roll + 
+                    " | yaw: " + yaw + 
+                    " | accZ: " + accZ);
         }
     }
 

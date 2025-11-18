@@ -4,7 +4,7 @@ public class SpotLightController : MonoBehaviour
 {
     public SerialManager serial;
     private Light spotLight;
-
+    public GameObject emissiveCylinder;
     private bool lightOn = false;      // current toggle state
     private int lastButton = 0;        // previous button value (0 or 1)
 
@@ -14,7 +14,7 @@ public class SpotLightController : MonoBehaviour
     }
 
     void Update()
-    {   
+    {
         int button = serial.buttonVal;
 
         // if button is pressed and is not pressed before
@@ -29,8 +29,11 @@ public class SpotLightController : MonoBehaviour
         // update lastButton for the next frame
         lastButton = button;
 
+        // Toggle emissive cylinder visibility
+        emissiveCylinder.SetActive(lightOn);
+
         // Pot controls intensity
         float pot = Mathf.Clamp(serial.potVal, 0f, 1023f);
-        spotLight.intensity = Mathf.Lerp(0f, 10f, pot / 1023f);
+        spotLight.intensity = Mathf.Lerp(1f, 12f, pot / 1023f);
     }
 }
