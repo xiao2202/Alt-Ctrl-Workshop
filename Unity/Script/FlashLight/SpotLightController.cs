@@ -29,11 +29,11 @@ public class SpotLightController : MonoBehaviour
         // update lastButton for the next frame
         lastButton = button;
 
-        // Toggle emissive cylinder visibility
-        emissiveCylinder.SetActive(lightOn);
-
         // Pot controls intensity
         float pot = Mathf.Clamp(serial.potVal, 0f, 1023f);
         spotLight.intensity = Mathf.Lerp(1f, 12f, pot / 1023f);
+
+        // Toggle emissive cylinder visibility
+        emissiveCylinder.SetActive(lightOn);
     }
 }
