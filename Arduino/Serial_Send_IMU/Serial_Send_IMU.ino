@@ -5,7 +5,7 @@ MPU6050 mpu(Wire);          // Create an object named 'mpu'
 unsigned long timer = 0;    // A stopwatch to control how fast we send data
 
 void setup() {
-  Serial.begin(115200);     // Set the speaking speed (must match Unity!)
+  Serial.begin(9600);     // Set the speaking speed (must match Unity!)
   Wire.begin();             // Start the communication
   
   // Start the sensor
@@ -17,7 +17,7 @@ void setup() {
     }
   }
   
-  //The Calibration 
+  // Calibration 
   Serial.println("CALIBRATING... Place sensor on a flat table. Do not move it!");
   delay(2000);              // give it a moment to calibrate
   mpu.calcOffsets();        // Calculate the Zero Point to stop the drifting
@@ -25,7 +25,7 @@ void setup() {
 }
 
 void loop() {
-  mpu.update();             // Ask the sensor for the latest motion data
+  mpu.update();  // Ask the sensor for the latest data
 
   // Send data every 20 milliseconds (50 times per second)
   // This keeps the Unity movement smooth without overwhelming the computer
@@ -36,8 +36,8 @@ void loop() {
     float pitch = mpu.getAngleY();
     float yaw   = mpu.getAngleZ();
 
-    // Get the Acceleration (Movement)
-    // This tells us how fast the sensor is moving UP or DOWN
+    // Get the Acceleration
+    // This tells us how fast the sensor is moving up or down
     float accZ  = mpu.getAccZ();
 
     // Send the data to Unity in a comma separated format
