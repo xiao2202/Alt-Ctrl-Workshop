@@ -2,7 +2,7 @@ using UnityEngine;
 
 public class SpotLightShake : MonoBehaviour
 {
-    public SerialManager serial;
+    public SerialManager_V2 serial;
     private Light spotLight;
 
     public GameObject emissiveCylinder;
@@ -13,7 +13,6 @@ public class SpotLightShake : MonoBehaviour
     public float fadeSpeed = 1f;          // how fast it fades per second
     public float shakeThreshold = 20f;    // accZ above this counts as a shake
     public float shakeBoost = 2f;         // how much intensity to add per shake
-
     private float currentIntensity;
 
     void Start()
@@ -49,3 +48,4 @@ public class SpotLightShake : MonoBehaviour
         }
     }
 }
+
