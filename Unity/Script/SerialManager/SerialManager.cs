@@ -2,7 +2,7 @@ using System.IO.Ports;
 using UnityEngine;
 using System; // This allows us to use "Exceptions" for error catching
 
-public class SerialManager_V2 : MonoBehaviour
+public class SerialManager : MonoBehaviour
 {
     // Anything 'public' shows up in the Unity window so you can change it easily.
     [Header("Connection Settings")]

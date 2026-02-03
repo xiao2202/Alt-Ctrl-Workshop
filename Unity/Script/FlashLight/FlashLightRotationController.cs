@@ -3,7 +3,7 @@ using UnityEngine;
 public class FlashLightRotationController : MonoBehaviour
 {
     // Link to our SerialManager V2 script
-    public SerialManager_V2 serial; 
+    public SerialManager serial; 
 
     [Header("Settings")]
     public bool useZAxis = false; // can toggle this in Inspector

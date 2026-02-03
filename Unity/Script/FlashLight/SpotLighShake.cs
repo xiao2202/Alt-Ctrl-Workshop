@@ -2,7 +2,7 @@ using UnityEngine;
 
 public class SpotLightShake : MonoBehaviour
 {
-    public SerialManager_V2 serial;
+    public SerialManager serial;
     private Light spotLight;
 
     public GameObject emissiveCylinder;
