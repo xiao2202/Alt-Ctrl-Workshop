@@ -2,7 +2,7 @@ using UnityEngine;
 
 public class CubeMovesInDark : MonoBehaviour
 {
-    public Light flashLight;            // Drag your Spotlight here
+    public Light flashLight;            // drag your Spotlight here in inspector
     public float moveSpeed = 3f;
     public Vector3 moveDirection = Vector3.forward;
 
@@ -18,17 +18,17 @@ public class CubeMovesInDark : MonoBehaviour
 
     void FixedUpdate()
     {
-        // LOGIC: Is the light ON and BRIGHT enough?
-        // We check if the component is enabled AND intensity is greater than 0.1
+        // is the light on and bright enough?
+        // check if the component is enabled and intensity is greater than 0.1
         bool isLightOn = flashLight.enabled && flashLight.intensity > 0.1f;
 
         if (isLightOn)
         {
-            StopCube(); // Light is ON -> Freeze!
+            StopCube(); // Light is on - cube stop moving
         }
         else
         {
-            MoveCube(); // Light is OFF/Dim -> Move!
+            MoveCube(); // Light is off - cube start moving
         }
     }
 
