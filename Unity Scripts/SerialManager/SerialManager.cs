@@ -6,8 +6,8 @@ public class SerialManager : MonoBehaviour
 {
     // Anything 'public' shows up in the Unity window so you can change it easily.
     [Header("Connection Settings")]
-    public string portName = "COM10"; // CHANGE THIS BASED ON YOUR ARDUINO'S NAME!!!
-    public int baudRate = 9600; // make sure it's the same as "Serial.begin(9600)" in your arduino code
+    public string portName = "COM4"; // CHANGE THIS BASED ON YOUR ARDUINO'S NAME!!!
+    public int baudRate = 115200; // make sure it's the same as "Serial.begin(115200)" in your arduino code
     private SerialPort port; // a private connection to arduino
 
     // These hold the numbers coming from the Arduino. 
