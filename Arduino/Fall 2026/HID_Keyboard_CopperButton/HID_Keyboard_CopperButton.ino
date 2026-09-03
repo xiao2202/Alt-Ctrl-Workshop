@@ -4,14 +4,15 @@
  * FOUR copper-tape buttons → keyboard keys, for two-player Pong
  *
  * WIRING (each button = two copper pads that touch when pressed):
- *   Button 1: pad → IO13, other pad → GND   (Left  UP   = 'w')
- *   Button 2: pad → IO14, other pad → GND   (Left  DOWN = 's')
- *   Button 3: pad → IO12, other pad → GND   (Right UP   = up arrow)
- *   Button 4: pad → IO4,  other pad → GND   (Right DOWN = down arrow)
+ *   Button 1: one end → IO13 (D11), other end → GND   (Left  UP   = 'w')
+ *   Button 2: one end → IO14 (D10), other end → GND   (Left  DOWN = 's')
+ *   Button 3: one end → IO12 (D12), other end → GND   (Right UP   = up arrow)
+ *   Button 4: one end → IO21 (D13), other end → GND   (Right DOWN = down arrow)
  *   No resistors needed — INPUT_PULLUP handles that internally.
  *   All GND pads can share one GND pin on the board.
+ *   (Wire to the IO number; the D-label is printed next to it on the board.)
  *
- * SETTINGS (Tools menu) — required or nothing works:
+ * SETTINGS (Tools menu):
  *   USB Mode → "USB-OTG (TinyUSB)"   (turns the board into a keyboard)
  *   USB CDC On Boot → "Enabled"      (keeps Serial working over the same cable)
  *   Serial Monitor speed → 115200
@@ -23,12 +24,12 @@
 USBHIDKeyboard Keyboard;      // Create a fake keyboard named 'Keyboard'
 
 // --- Describe each button in one place ---
-// Add or change a button by editing a single line here.
-const int NUM_BUTTONS = 4;
+// Add or change a button
+const int NUM_BUTTONS = 4; // how many buttons do you have
 
-int  pins[NUM_BUTTONS] = { 13, 14, 12, 4 };   // the IO pin each button is wired to
+int  pins[NUM_BUTTONS] = { 13, 14, 12, 21 };   // the IO pin each button is wired to; the order matters; the first number pairs with the first key and the first name, and so on
 int  keys[NUM_BUTTONS] = { 'w', 's', KEY_UP_ARROW, KEY_DOWN_ARROW };  // key each one presses
-const char* names[NUM_BUTTONS] = { "Left UP", "Left DOWN", "Right UP", "Right DOWN" };
+const char* names[NUM_BUTTONS] = { "Left UP", "Left DOWN", "Right UP", "Right DOWN" }; // these are for Serial Monitor's debug message. 
 
 // Remember each button's state from last loop, so we act only on press/release.
 bool prev[NUM_BUTTONS];
@@ -52,7 +53,7 @@ void setup() {
 void loop() {
   // Check all four buttons every loop.
   for (int i = 0; i < NUM_BUTTONS; i++) {
-    bool now = digitalRead(pins[i]);   // LOW = pads bridged = pressed
+    bool now = digitalRead(pins[i]);   // LOW = pressed
 
     if (now == LOW && prev[i] == HIGH) {   // just pressed
       Keyboard.press(keys[i]);             // hold the key DOWN
