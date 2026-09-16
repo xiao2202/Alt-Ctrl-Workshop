@@ -23,7 +23,7 @@
 #include <Adafruit_BNO055.h>        // the BNO055 sensor library
 
 // --- Your phone hotspot details (CHANGE THESE) ---
-const char* ssid     = "YOUR_HOTSPOT_NAME";      // your phone hotspot's name
+const char* ssid     = "YOUR_HOTSPOT_NAME";      // your phone hotspot's name, do not include punctuation in name
 const char* password = "YOUR_HOTSPOT_PASSWORD";  // your phone hotspot's password
 
 // --- Where to send the OSC data (your laptop running Unreal) ---
