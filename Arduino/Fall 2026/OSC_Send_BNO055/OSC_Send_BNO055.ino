@@ -93,5 +93,5 @@ void loop() {
   Serial.print(roll); Serial.print(", ");
   Serial.println(accZ);
 
-  delay(20);                          // send about 50 times per second
+  delay(50);                          // send about 20 times per second
 }
