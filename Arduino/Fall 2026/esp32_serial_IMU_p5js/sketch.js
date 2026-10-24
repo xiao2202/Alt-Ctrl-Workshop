@@ -97,8 +97,8 @@ async function readFromArduino() {
     textFromArduino += decoder.decode(result.value);
     let lines = textFromArduino.split("\n");
     textFromArduino = lines.pop();
-    for (let line of lines) {
-      let parts = line.trim().split(",");
+    for (let oneLine of lines) {
+      let parts = oneLine.trim().split(",");
       if (parts.length === 3) {
         let r = parseFloat(parts[0]);
         let p = parseFloat(parts[1]);
