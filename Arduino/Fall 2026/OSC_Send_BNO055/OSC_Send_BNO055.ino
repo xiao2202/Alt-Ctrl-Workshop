@@ -1,4 +1,4 @@
-    /*
+/*
  * Alt.Ctrl Workshop — Send BNO055 data to Unreal Engine over OSC
  * Board: FireBeetle 2 ESP32-S3
  * Network: your phone's hotspot (not school Wi-Fi)
@@ -8,6 +8,9 @@
  *   BNO055 GND -> GND     (ground)
  *   BNO055 SDA -> SDA     (I2C data)
  *   BNO055 SCL -> SCL     (I2C clock)
+ *
+ * IDE SETTING: Tools -> USB CDC On Boot -> Enabled
+ * AFTER UPLOAD: if you see only "ESP-ROM:esp32s3..." press the RST button once.
  *
  * LIBRARIES to install (Library Manager):
  *   - Adafruit BNO055
@@ -23,71 +26,95 @@
 #include <Adafruit_BNO055.h>        // the BNO055 sensor library
 
 // --- Your phone hotspot details (CHANGE THESE) ---
-const char* ssid     = "QiGuaiMe";      // your phone hotspot's name, do not include punctuation in name
-const char* password = "umewapawa!!";  // your phone hotspot's password
+const char* ssid     = "YOUR_HOT_SPOT_NAME";      // your phone hotspot's name, no punctuation
+const char* password = "YOUR_PASSWORD";   // your phone hotspot's password
 
 // --- Where to send the OSC data (your laptop running Unreal) ---
-IPAddress laptopIP(10, 164, 144, 247);   // your laptop's IP on the hotspot (CHANGE THIS)
-const int laptopPort = 8001;          // the port Unreal listens on (must match Unreal)
+IPAddress laptopIP(172, 100, 20, 10);   // your laptop's IP on the hotspot (CHANGE THIS)
+const int laptopPort = 8001;             // the port Unreal listens on (must match Unreal)
 
 WiFiUDP Udp;                          // the tool that actually sends the UDP packets
 
 // --- Create the sensor object (55 is just an ID, 0x28 is its address) ---
 Adafruit_BNO055 bno = Adafruit_BNO055(55, 0x28, &Wire);
+bool bnoReady = false;                // did the sensor start OK?
 
 void setup() {
   Serial.begin(115200);              // start talking to the Serial Monitor
+  delay(1000);                       // give USB serial a moment to come up
+  Serial.println();
+  Serial.println("Starting up...");
 
   // Start the I2C connection on the FireBeetle's default SDA/SCL pins
   Wire.begin();
 
-  // Start the sensor; if it fails, stop here and warn
-  if (!bno.begin()) {
-    Serial.println("BNO055 not found! Check wiring.");
-    while (1);                        // freeze here forever
+  // Start the sensor; if it fails, WARN but keep going (do NOT freeze)
+  if (bno.begin()) {
+    bnoReady = true;
+    Serial.println("BNO055 OK.");
+  } else {
+    bnoReady = false;
+    Serial.println("WARNING: BNO055 not found. Check wiring. Continuing anyway.");
   }
 
-  // Connect to the phone hotspot
-  Serial.print("Connecting to hotspot");
-  WiFi.begin(ssid, password);        // start connecting
-  while (WiFi.status() != WL_CONNECTED) {  // wait until connected
+  // Connect to the phone hotspot (gives up after ~10s instead of hanging)
+  Serial.print("Connecting to hotspot: ");
+  Serial.println(ssid);
+  WiFi.begin(ssid, password);
+
+  int tries = 0;
+  while (WiFi.status() != WL_CONNECTED && tries < 20) {
     delay(500);
-    Serial.print(".");               // print dots while we wait
+    Serial.print(".");
+    tries++;
   }
-  Serial.println(" connected!");
+  Serial.println();
 
-  // Show the ESP32's own IP address (useful for checking)
-  Serial.print("My IP is: ");
-  Serial.println(WiFi.localIP());
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.println("SUCCESS! Connected to hotspot.");
+    Serial.print("My IP is: ");
+    Serial.println(WiFi.localIP());
+  } else {
+    Serial.println("WARNING: could not connect to hotspot.");
+    Serial.println("Check the name, password, and that the hotspot is on (2.4GHz).");
+    Serial.println("Sensor still prints; OSC just won't reach Unreal until connected.");
+  }
+
+  Serial.println("Running.");
 }
 
 void loop() {
-  // Read the sensor's orientation (yaw, pitch, roll) in degrees
-  sensors_event_t orientationData;
-  bno.getEvent(&orientationData, Adafruit_BNO055::VECTOR_EULER);
+  // Read the sensor only if it started OK
+  float yaw = 0, pitch = 0, roll = 0, accZ = 0;
 
-  float yaw   = orientationData.orientation.x;  // heading / turning
-  float pitch = orientationData.orientation.y;  // tilt forward/back
-  float roll  = orientationData.orientation.z;  // tilt left/right
+  if (bnoReady) {
+    sensors_event_t orientationData;
+    bno.getEvent(&orientationData, Adafruit_BNO055::VECTOR_EULER);
 
-  // Read acceleration with gravity removed (linear acceleration)
-  imu::Vector<3> accel = bno.getVector(Adafruit_BNO055::VECTOR_LINEARACCEL);
-  float accZ = accel.z();            // up/down acceleration
+    yaw   = orientationData.orientation.x;  // heading / turning
+    pitch = orientationData.orientation.y;  // tilt forward/back
+    roll  = orientationData.orientation.z;  // tilt left/right
 
-  // --- Build one OSC message with all four values ---
-  OSCMessage msg("/imu");            // "/imu" is the address Unreal will listen for
-  msg.add(yaw);                      // add yaw as the 1st value
-  msg.add(pitch);                    // add pitch as the 2nd value
-  msg.add(roll);                     // add roll as the 3rd value
-  msg.add(accZ);                     // add accZ as the 4th value
+    // Read acceleration with gravity removed (linear acceleration)
+    imu::Vector<3> accel = bno.getVector(Adafruit_BNO055::VECTOR_LINEARACCEL);
+    accZ = accel.z();                       // up/down acceleration
+  }
 
-  // --- Send the message to the laptop ---
-  Udp.beginPacket(laptopIP, laptopPort);  // start a packet aimed at the laptop
-  msg.send(Udp);                          // put the OSC message inside it
-  Udp.endPacket();                        // send it
-  msg.empty();                            // clear the message for next time
+  // --- Send OSC only if Wi-Fi is connected ---
+  if (WiFi.status() == WL_CONNECTED) {
+    OSCMessage msg("/imu");          // "/imu" is the address Unreal listens for
+    msg.add(yaw);                    // 1st value
+    msg.add(pitch);                  // 2nd value
+    msg.add(roll);                   // 3rd value
+    msg.add(accZ);                   // 4th value
 
-  // Print to Serial Monitor so you can see it working
+    Udp.beginPacket(laptopIP, laptopPort);
+    msg.send(Udp);
+    Udp.endPacket();
+    msg.empty();
+  }
+
+  // Print to Serial Monitor so you can see it working (always)
   Serial.print(yaw); Serial.print(", ");
   Serial.print(pitch); Serial.print(", ");
   Serial.print(roll); Serial.print(", ");
