@@ -3,9 +3,9 @@
  * Board: FireBeetle 2 ESP32-S3
  * Network: your phone's hotspot (not school Wi-Fi)
  *
- * Sends TWO kinds of OSC message:
- *   /imu     -> yaw, pitch, roll, accZ   (from the BNO055)
- *   /rotary  -> enc1, enc2, enc3, enc4, enc5  (from the 5 encoders)
+ * Sends TWO kinds of OSC message (both as floats):
+ *   /imu     -> yaw, pitch, roll, accZ        (from the BNO055)
+ *   /rotary  -> angle1..angle5 (0-360 degrees) (from the 5 encoders)
  *
  * ---------------- WIRING ----------------
  * BNO055 (I2C):
@@ -26,8 +26,7 @@
  *   Encoder 4:  A->IO10, B->IO11
  *   Encoder 5:  A->IO12, B->IO13
  *
- *   All VCC pins share 3V3. All C pins share GND. (A common 3V3 rail
- *   and a common GND rail make this much tidier.)
+ *   All VCC pins share 3V3. All C pins share GND.
  *
  * LIBRARIES (Library Manager):
  *   - Adafruit BNO055
@@ -42,7 +41,7 @@
 #include <Wire.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BNO055.h>
-#include <ESP32Encoder.h>           // handles reading the rotary encoders
+#include <ESP32Encoder.h>
 
 // --- Your phone hotspot details (CHANGE THESE) ---
 const char* ssid     = "YOUR_HOTSPOT_NAME";      // no punctuation in the name
@@ -51,6 +50,11 @@ const char* password = "YOUR_HOTSPOT_PASSWORD";
 // --- Where to send the OSC data (your laptop running Unreal) ---
 IPAddress laptopIP(172, 20, 10, 2);   // your laptop's IP on the hotspot (CHANGE THIS)
 const int laptopPort = 8000;          // must match Unreal
+
+// --- How many encoder counts make one full 360 turn ---
+// EC11 is usually ~20 detents/turn with attachHalfQuad.
+// Turn a knob one full circle, watch the Serial Monitor count, and set this.
+const float COUNTS_PER_REV = 20.0;
 
 WiFiUDP Udp;
 
@@ -64,6 +68,14 @@ ESP32Encoder enc3;
 ESP32Encoder enc4;
 ESP32Encoder enc5;
 
+// Turn a raw encoder count into a wrapped 0-360 angle
+float countToAngle(long count) {
+  float angle = (count / COUNTS_PER_REV) * 360.0;   // steps -> degrees
+  angle = fmod(angle, 360.0);                        // wrap into -360..360
+  if (angle < 0) angle += 360.0;                     // make it 0..360
+  return angle;
+}
+
 void setup() {
   Serial.begin(115200);
 
@@ -75,8 +87,7 @@ void setup() {
     while (1);
   }
 
-  // Start each encoder on its two pins (A, B).
-  // useInternalWeakPullResistors turns on pull-ups so idle pins read cleanly.
+  // Turn on pull-ups and attach each encoder to its two pins (A, B)
   ESP32Encoder::useInternalWeakPullResistors = puType::up;
   enc1.attachHalfQuad(4, 5);
   enc2.attachHalfQuad(6, 7);
@@ -128,20 +139,20 @@ void loop() {
   imuMsg.empty();
 
   // ---------- Rotary encoders ----------
-  // Read each encoder's accumulated count as a number
-  long r1 = enc1.getCount();
-  long r2 = enc2.getCount();
-  long r3 = enc3.getCount();
-  long r4 = enc4.getCount();
-  long r5 = enc5.getCount();
+  // Read each encoder and convert its count to a 0-360 angle
+  float a1 = countToAngle(enc1.getCount());
+  float a2 = countToAngle(enc2.getCount());
+  float a3 = countToAngle(enc3.getCount());
+  float a4 = countToAngle(enc4.getCount());
+  float a5 = countToAngle(enc5.getCount());
 
-  // Send the rotary message on /rotary
+  // Send the rotary message on /rotary (floats, degrees 0-360)
   OSCMessage rotMsg("/rotary");
-  rotMsg.add((int32_t)r1);
-  rotMsg.add((int32_t)r2);
-  rotMsg.add((int32_t)r3);
-  rotMsg.add((int32_t)r4);
-  rotMsg.add((int32_t)r5);
+  rotMsg.add(a1);
+  rotMsg.add(a2);
+  rotMsg.add(a3);
+  rotMsg.add(a4);
+  rotMsg.add(a5);
 
   Udp.beginPacket(laptopIP, laptopPort);
   rotMsg.send(Udp);
@@ -155,11 +166,11 @@ void loop() {
   Serial.print(roll); Serial.print(", ");
   Serial.print(accZ);
   Serial.print("  |  ROTARY: ");
-  Serial.print(r1); Serial.print(", ");
-  Serial.print(r2); Serial.print(", ");
-  Serial.print(r3); Serial.print(", ");
-  Serial.print(r4); Serial.print(", ");
-  Serial.println(r5);
+  Serial.print(a1); Serial.print(", ");
+  Serial.print(a2); Serial.print(", ");
+  Serial.print(a3); Serial.print(", ");
+  Serial.print(a4); Serial.print(", ");
+  Serial.println(a5);
 
   delay(50);   // ~20 times per second
 }
