@@ -3,30 +3,28 @@
  * Board: FireBeetle 2 ESP32-S3
  * Network: your phone's hotspot (not school Wi-Fi)
  *
- * Sends TWO kinds of OSC message (both as floats):
- *   /imu     -> yaw, pitch, roll, accZ        (from the BNO055)
+ * Sends TWO OSC messages (both floats):
+ *   /imu     -> yaw, pitch, roll, accZ         (from the BNO055)
  *   /rotary  -> angle1..angle5 (0-360 degrees) (from the 5 encoders)
  *
  * ---------------- WIRING ----------------
  * BNO055 (I2C):
- *   Vin -> 3V3
- *   GND -> GND
- *   SDA -> SDA  (IO1)
- *   SCL -> SCL  (IO2)
+ *   Vin -> 3V3,  GND -> GND,  SDA -> SDA (IO1),  SCL -> SCL (IO2)
  *
- * Each rotary encoder breakout (VCC, A, C, B):
- *   VCC -> 3V3   (use 3V3, NOT 5V, even though the label says 5V)
- *   C   -> GND
+ * Each rotary encoder (VCC, GND, A, B, C):
+ *   VCC -> 3V3   (use 3V3, NOT 5V)
+ *   GND -> GND
  *   A   -> its A pin below
  *   B   -> its B pin below
+ *   C   -> leave unconnected (button not used)
  *
  *   Encoder 1:  A->IO4,  B->IO5
  *   Encoder 2:  A->IO6,  B->IO7
  *   Encoder 3:  A->IO8,  B->IO9
  *   Encoder 4:  A->IO10, B->IO11
- *   Encoder 5:  A->IO12, B->IO13
+ *   Encoder 5:  A->IO14, B->IO21
  *
- *   All VCC pins share 3V3. All C pins share GND.
+ * IDE SETTING: Tools -> USB CDC On Boot -> Enabled
  *
  * LIBRARIES (Library Manager):
  *   - Adafruit BNO055
@@ -44,22 +42,22 @@
 #include <ESP32Encoder.h>
 
 // --- Your phone hotspot details (CHANGE THESE) ---
-const char* ssid     = "YOUR_HOTSPOT_NAME";      // no punctuation in the name
-const char* password = "YOUR_HOTSPOT_PASSWORD";
+const char* ssid     = "iPhone";      // no punctuation in the name
+const char* password = "66668888";
 
 // --- Where to send the OSC data (your laptop running Unreal) ---
 IPAddress laptopIP(172, 20, 10, 2);   // your laptop's IP on the hotspot (CHANGE THIS)
 const int laptopPort = 8000;          // must match Unreal
 
 // --- How many encoder counts make one full 360 turn ---
-// EC11 is usually ~20 detents/turn with attachHalfQuad.
-// Turn a knob one full circle, watch the Serial Monitor count, and set this.
+// EC11 is usually ~20 detents/turn. Turn one full circle, watch the count, adjust.
 const float COUNTS_PER_REV = 20.0;
 
 WiFiUDP Udp;
 
 // --- The BNO055 sensor ---
 Adafruit_BNO055 bno = Adafruit_BNO055(55, 0x28, &Wire);
+bool bnoReady = false;                // did the sensor start OK?
 
 // --- The 5 rotary encoders ---
 ESP32Encoder enc1;
@@ -70,96 +68,117 @@ ESP32Encoder enc5;
 
 // Turn a raw encoder count into a wrapped 0-360 angle
 float countToAngle(long count) {
-  float angle = (count / COUNTS_PER_REV) * 360.0;   // steps -> degrees
-  angle = fmod(angle, 360.0);                        // wrap into -360..360
-  if (angle < 0) angle += 360.0;                     // make it 0..360
+  float angle = (count / COUNTS_PER_REV) * 360.0;
+  angle = fmod(angle, 360.0);
+  if (angle < 0) angle += 360.0;
   return angle;
 }
 
 void setup() {
   Serial.begin(115200);
+  delay(1000);                        // give USB serial a moment to come up
+  Serial.println();
+  Serial.println("Starting up...");
 
-  // Start I2C for the BNO055 (SDA=IO1, SCL=IO2 are the FireBeetle defaults)
+  // --- Start the BNO055 (does NOT freeze the board if it fails) ---
   Wire.begin();
-
-  if (!bno.begin()) {
-    Serial.println("BNO055 not found! Check wiring.");
-    while (1);
+  if (bno.begin()) {
+    bnoReady = true;
+    Serial.println("BNO055 OK.");
+  } else {
+    bnoReady = false;
+    Serial.println("WARNING: BNO055 not found. Check wiring. Continuing anyway.");
   }
 
-  // Turn on pull-ups and attach each encoder to its two pins (A, B)
+  // --- Start the 5 encoders (prints after each so you can spot a bad pin) ---
   ESP32Encoder::useInternalWeakPullResistors = puType::up;
-  enc1.attachHalfQuad(4, 5);
-  enc2.attachHalfQuad(6, 7);
-  enc3.attachHalfQuad(8, 9);
-  enc4.attachHalfQuad(10, 11);
-  enc5.attachHalfQuad(12, 13);
-
-  // Start all encoders counting from zero
+  Serial.println("enc1..."); enc1.attachHalfQuad(4, 5);
+  Serial.println("enc2..."); enc2.attachHalfQuad(6, 7);
+  Serial.println("enc3..."); enc3.attachHalfQuad(8, 9);
+  Serial.println("enc4..."); enc4.attachHalfQuad(10, 11);
+  //Serial.println("enc5..."); enc5.attachHalfQuad(14, 38);
   enc1.clearCount();
   enc2.clearCount();
   enc3.clearCount();
   enc4.clearCount();
   enc5.clearCount();
+  Serial.println("Encoders ready.");
 
-  // Connect to the phone hotspot
-  Serial.print("Connecting to hotspot");
+  // --- Connect to the phone hotspot (stops trying after ~10s) ---
+  Serial.print("Connecting to hotspot: ");
+  Serial.println(ssid);
   WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED) {
+
+  int tries = 0;
+  while (WiFi.status() != WL_CONNECTED && tries < 20) {
     delay(500);
     Serial.print(".");
+    tries++;
   }
-  Serial.println(" connected!");
-  Serial.print("My IP is: ");
-  Serial.println(WiFi.localIP());
+  Serial.println();
+
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.println("SUCCESS! Connected to hotspot.");
+    Serial.print("My IP is: ");
+    Serial.println(WiFi.localIP());
+  } else {
+    Serial.println("WARNING: could not connect to hotspot.");
+    Serial.println("Check the name, password, and that the hotspot is on (2.4GHz).");
+    Serial.println("Encoders still work; OSC just won't reach Unreal until connected.");
+  }
+
+  Serial.println("Running.");
 }
 
 void loop() {
-  // ---------- BNO055 ----------
-  sensors_event_t orientationData;
-  bno.getEvent(&orientationData, Adafruit_BNO055::VECTOR_EULER);
+  // ---------- BNO055 (only if it started OK) ----------
+  float yaw = 0, pitch = 0, roll = 0, accZ = 0;
 
-  float yaw   = orientationData.orientation.x;
-  float pitch = orientationData.orientation.y;
-  float roll  = orientationData.orientation.z;
+  if (bnoReady) {
+    sensors_event_t orientationData;
+    bno.getEvent(&orientationData, Adafruit_BNO055::VECTOR_EULER);
+    yaw   = orientationData.orientation.x;
+    pitch = orientationData.orientation.y;
+    roll  = orientationData.orientation.z;
 
-  imu::Vector<3> accel = bno.getVector(Adafruit_BNO055::VECTOR_LINEARACCEL);
-  float accZ = accel.z();
+    imu::Vector<3> accel = bno.getVector(Adafruit_BNO055::VECTOR_LINEARACCEL);
+    accZ = accel.z();
+  }
 
-  // Send the IMU message on /imu
-  OSCMessage imuMsg("/imu");
-  imuMsg.add(yaw);
-  imuMsg.add(pitch);
-  imuMsg.add(roll);
-  imuMsg.add(accZ);
-
-  Udp.beginPacket(laptopIP, laptopPort);
-  imuMsg.send(Udp);
-  Udp.endPacket();
-  imuMsg.empty();
-
-  // ---------- Rotary encoders ----------
-  // Read each encoder and convert its count to a 0-360 angle
+  // ---------- Rotary encoders -> 0-360 angles ----------
   float a1 = countToAngle(enc1.getCount());
   float a2 = countToAngle(enc2.getCount());
   float a3 = countToAngle(enc3.getCount());
   float a4 = countToAngle(enc4.getCount());
   float a5 = countToAngle(enc5.getCount());
 
-  // Send the rotary message on /rotary (floats, degrees 0-360)
-  OSCMessage rotMsg("/rotary");
-  rotMsg.add(a1);
-  rotMsg.add(a2);
-  rotMsg.add(a3);
-  rotMsg.add(a4);
-  rotMsg.add(a5);
+  // ---------- Send OSC only if Wi-Fi is connected ----------
+  if (WiFi.status() == WL_CONNECTED) {
+    // /imu
+    OSCMessage imuMsg("/imu");
+    imuMsg.add(yaw);
+    imuMsg.add(pitch);
+    imuMsg.add(roll);
+    imuMsg.add(accZ);
+    Udp.beginPacket(laptopIP, laptopPort);
+    imuMsg.send(Udp);
+    Udp.endPacket();
+    imuMsg.empty();
 
-  Udp.beginPacket(laptopIP, laptopPort);
-  rotMsg.send(Udp);
-  Udp.endPacket();
-  rotMsg.empty();
+    // /rotary
+    OSCMessage rotMsg("/rotary");
+    rotMsg.add(a1);
+    rotMsg.add(a2);
+    rotMsg.add(a3);
+    rotMsg.add(a4);
+    rotMsg.add(a5);
+    Udp.beginPacket(laptopIP, laptopPort);
+    rotMsg.send(Udp);
+    Udp.endPacket();
+    rotMsg.empty();
+  }
 
-  // Print both to Serial Monitor so you can see them working
+  // ---------- Print to Serial Monitor (always, so you can debug) ----------
   Serial.print("IMU: ");
   Serial.print(yaw); Serial.print(", ");
   Serial.print(pitch); Serial.print(", ");

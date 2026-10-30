@@ -23,12 +23,12 @@
 #include <Adafruit_BNO055.h>        // the BNO055 sensor library
 
 // --- Your phone hotspot details (CHANGE THESE) ---
-const char* ssid     = "YOUR_HOTSPOT_NAME";      // your phone hotspot's name, do not include punctuation in name
-const char* password = "YOUR_HOTSPOT_PASSWORD";  // your phone hotspot's password
+const char* ssid     = "QiGuaiMe";      // your phone hotspot's name, do not include punctuation in name
+const char* password = "umewapawa!!";  // your phone hotspot's password
 
 // --- Where to send the OSC data (your laptop running Unreal) ---
-IPAddress laptopIP(172, 20, 10, 2);   // your laptop's IP on the hotspot (CHANGE THIS)
-const int laptopPort = 8000;          // the port Unreal listens on (must match Unreal)
+IPAddress laptopIP(10, 164, 144, 247);   // your laptop's IP on the hotspot (CHANGE THIS)
+const int laptopPort = 8001;          // the port Unreal listens on (must match Unreal)
 
 WiFiUDP Udp;                          // the tool that actually sends the UDP packets
 
