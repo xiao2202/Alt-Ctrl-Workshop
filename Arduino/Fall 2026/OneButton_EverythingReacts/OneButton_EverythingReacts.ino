@@ -4,15 +4,12 @@
  *  Board: FireBeetle 2 ESP32-S3
  *
  *  Unity sends 'P' when the player clicks the 3D button.
- *  The board then, ALL AT THE SAME TIME, for a short burst:
+ *  The board runs all three at once for a short burst:
  *     - flashes the LED
- *     - beeps the buzzer on and off
+ *     - beeps the buzzer
  *     - sweeps the servo back and forth
- *  After the burst ends, everything stops and waits for the
- *  next press.
  *
- *  This uses millis() instead of delay(), so all three run
- *  together (delay would make them happen one after another).
+ *  Uses millis() so all three run together.
  *
  *  WIRING:
  *     LED:    IO4 -> 220 ohm resistor -> LED -> GND
@@ -31,17 +28,15 @@ const int SERVO_PIN  = 6;
 
 Servo myServo;
 
-// --- Burst control ---
-bool bursting = false;             // are we currently doing the burst?
-unsigned long burstStart = 0;      // when the burst began (in milliseconds)
-const unsigned long BURST_LENGTH = 2000;  // how long the whole burst lasts (ms)
+bool bursting = false;
+unsigned long burstStart = 0;
+const unsigned long BURST_LENGTH = 2000;
 
-// --- Timers for each output (so each can run at its own speed) ---
-unsigned long lastLedTime = 0;     // last time the LED changed
-unsigned long lastServoTime = 0;   // last time the servo stepped
-bool ledState = false;             // is the LED currently on?
-int servoAngle = 0;                // current servo angle
-int servoDir = 1;                  // which way the servo is moving (+1 or -1)
+unsigned long lastLedTime = 0;
+unsigned long lastServoTime = 0;
+bool ledState = false;
+int servoAngle = 0;
+int servoDir = 1;
 
 void setup() {
   Serial.begin(115200);
@@ -56,51 +51,49 @@ void setup() {
 }
 
 void loop() {
-  unsigned long now = millis();   // the current time, in milliseconds
+  unsigned long now = millis();
 
   // --- Did Unity send a press? ---
   if (Serial.available() > 0) {
     char c = Serial.read();
-    if (c == 'P' && !bursting) {   // start a burst (ignore if already bursting)
+    if (c == 'P' && !bursting) {
       bursting = true;
       burstStart = now;
       Serial.println("Burst start!");
     }
   }
 
-  // --- If we're in a burst, run all three outputs together ---
+  // --- Run all three together during the burst ---
   if (bursting) {
 
-    // Stop the burst once enough time has passed
+    // End the burst after BURST_LENGTH
     if (now - burstStart >= BURST_LENGTH) {
       bursting = false;
-      digitalWrite(LED_PIN, LOW);   // make sure LED ends off
-      noTone(BUZZER_PIN);           // make sure buzzer ends silent
-      myServo.write(0);             // return servo to start
+      digitalWrite(LED_PIN, LOW);
+      noTone(BUZZER_PIN);
+      myServo.write(0);
       Serial.println("Burst done.");
-      return;                        // skip the rest this loop
+      return;
     }
 
-    // ----- LED: flash on/off every 100 ms -----
+    // LED flashes every 100 ms, and the buzzer follows it
     if (now - lastLedTime >= 100) {
       lastLedTime = now;
-      ledState = !ledState;                       // flip it
+      ledState = !ledState;
       digitalWrite(LED_PIN, ledState ? HIGH : LOW);
+
+      // Buzzer beeps each time the LED turns on
+      if (ledState) {
+        tone(BUZZER_PIN, 1000, 80);   // short 80 ms beep, same as your working code
+      }
     }
 
-    // ----- Buzzer: beep follows the LED (on when LED is on) -----
-    if (ledState) {
-      tone(BUZZER_PIN, 1000);   // start a 1000 Hz tone (no duration = keep playing)
-    } else {
-      noTone(BUZZER_PIN);       // silence
-    }
-
-    // ----- Servo: step one degree every 5 ms, bouncing 0<->180 -----
+    // Servo steps every 5 ms, bouncing 0<->180
     if (now - lastServoTime >= 5) {
       lastServoTime = now;
-      servoAngle += servoDir;              // move one step
-      if (servoAngle >= 180) servoDir = -1; // hit the top, reverse
-      if (servoAngle <= 0)   servoDir = 1;  // hit the bottom, reverse
+      servoAngle += servoDir;
+      if (servoAngle >= 180) servoDir = -1;
+      if (servoAngle <= 0)   servoDir = 1;
       myServo.write(servoAngle);
     }
   }
