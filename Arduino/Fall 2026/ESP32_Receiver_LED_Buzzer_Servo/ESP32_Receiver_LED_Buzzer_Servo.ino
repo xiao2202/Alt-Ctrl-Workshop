@@ -31,8 +31,8 @@
 #include <ESP32Servo.h>
 
 // --- Your phone hotspot (CHANGE THESE) ---
-const char* ssid     = "YOUR_HOTSPOT_NAME";   // no punctuation in the name
-const char* password = "YOUR_PASSWORD";
+const char* ssid     = "xiaowifi";   // no punctuation in the name
+const char* password = "12345678";
 
 // --- The port this board LISTENS on (must match Unreal) ---
 const int listenPort = 8000;
